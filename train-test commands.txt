@@ -1,0 +1,9 @@
+python main.py --model EDSR --scale 4 --save edsr_baseline_x4 --n_GPUs=2 --data_train SIMD --data_test SIMD --dir_data D:\Bostan\Datasets  --data_range 1-4500/4501-5000 --epochs 300
+
+
+python main.py --template GAN --save edsr_gan2 --scale 4 --n_GPUs=2 --data_train SIMD --data_test SIMD --dir_data D:\Bostan\Datasets  --data_range 1-4500/4501-5000 --epochs 300 --batch_size 16 --patch_size 192 --loss 3*VGG54+0.015*GAN --betas (0.5, 0.999) --lr 0.0002
+
+python main.py --model EDSR --scale 4 --save edsr_baseline_x4_2 --n_GPUs=2 --data_train SIMD --data_test SIMD --dir_data D:\Bostan\SIMD\SIMD_NEW\Dataset_for_training  --data_range 1-4000/4001-4500 --epochs 200
+
+
+python main.py --model HAN_DENSE_2 --scale 4  --save test --n_GPUs=2 --data_train SIMD --data_test SIMD --dir_data D:\Bostan\SIMD\SIMD_NEW\Dataset_for_training  --data_range 1-4000/4001-4500 --epochs 100 --n_resblocks 3 --pre_train ../experiment/han_dense_2_run_4/model/model_best.pt
