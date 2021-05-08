@@ -9,3 +9,5 @@ python main.py --model EDSR --scale 4 --save edsr_baseline_x4_2 --n_GPUs=2 --dat
 python main.py --model HAN_DENSE_2 --scale 4  --save test --n_GPUs=2 --data_train SIMD --data_test SIMD --dir_data D:\Bostan\SIMD\SIMD_NEW\Dataset_for_training  --data_range 1-4000/4001-4500 --epochs 100 --n_resblocks 3 --pre_train ../experiment/han_dense_2_run_4/model/model_best.pt
 
 python main.py --model HAN_dense_4 --scale 4  --save test --n_GPUs=2 --data_train SIMD --data_test SIMD --dir_data D:\Bostan\SIMD\SIMD_NEW\Dataset_for_training  --data_range 1-4000/4001-4500 --epochs 200 --decay 150 --n_resblocks 3 --batch_size 32 --patch_size 192 --pre_train ../experiment/HAN_Dense_4_SIMD_PS192_RUN2/model/model_latest.pt --reduction 8 --test_every 500
+
+python main.py --model HAN_dense_5 --scale 4  --save test --n_GPUs=2 --data_train SIMD --data_test SIMD --dir_data D:\Bostan\SIMD\SIMD_NEW\Dataset_for_training  --data_range 1-4000/4001-4500 --epochs 300 --decay 200 --n_resblocks 2 --n_resgroups 20 --batch_size 32 --patch_size 192 --reduction 8 --test_every 500

@@ -108,18 +108,18 @@ class CSAM_Module(nn.Module):
 ## Residual Channel Attention Block (RCAB)
 class RCAB(nn.Module):
     def __init__(
-            self, conv, n_feat, kernel_size, reduction,
+            self, conv, in_feat, out_feat, kernel_size, reduction,
             bias=True, bn=False, act=nn.ReLU(True), res_scale=1):
 
         super(RCAB, self).__init__()
         modules_body = []
 
         for i in range(2):
-            modules_body.append(conv(n_feat, n_feat, kernel_size, bias=bias))
-            if bn: modules_body.append(nn.BatchNorm2d(n_feat))
+            modules_body.append(conv(in_feat, out_feat, kernel_size, bias=bias))
+            if bn: modules_body.append(nn.BatchNorm2d(out_feat))
             if i == 0: modules_body.append(act)
 
-        modules_body.append(CALayer(n_feat, reduction))
+        modules_body.append(CALayer(out_feat, reduction))
         self.body = nn.Sequential(*modules_body)
         self.res_scale = res_scale
 
@@ -153,13 +153,13 @@ class ResidualGroup(nn.Module):
 
         modules_body = [
             RCAB(
-                conv, n_feat * (2 ** i), kernel_size, reduction, bias=True, bn=False, act=nn.ReLU(True), res_scale=1) \
+                conv, n_feat * (i + 1), n_feat, kernel_size, reduction, bias=True, bn=False, act=nn.ReLU(True), res_scale=1) \
             for i in range(n_resblocks)]
         # modules_body.append(conv(n_feat, n_feat, kernel_size))
 
         # self.modules_body = nn.ModuleList(self.modules_body)
 
-        self.c1 = BasicBlock(n_feat * (2 ** (n_resblocks - 1)), n_feat, kernel_size)
+        self.c1 = BasicBlock(n_feat * n_resblocks, n_feat, kernel_size)
 
         self.body = nn.Sequential(*modules_body)
 
