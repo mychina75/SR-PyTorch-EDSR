@@ -4,7 +4,6 @@ import pdb
 import model.common
 import model.ops as ops
 
-
 def make_model(args, parent=False):
     return HAN(args)
 
@@ -16,10 +15,10 @@ class CALayer(nn.Module):
 
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
 
-        self.c1 = ops.BasicBlock(channel, channel // reduction, 1, 1, 0, 1)
-        self.c2 = ops.BasicBlock(channel, channel // reduction, 1, 1, 0, 1)
-        self.c3 = ops.BasicBlock(channel, channel // reduction, 1, 1, 0, 1)
-        self.c4 = ops.BasicBlockSig((channel // reduction) * 3, channel, 1, 1, 0)
+        self.c1 = ops.BasicBlock(channel , channel // reduction, 1, 1, 0, 1)
+        self.c2 = ops.BasicBlock(channel , channel // reduction, 1, 1, 0, 1)
+        self.c3 = ops.BasicBlock(channel , channel // reduction, 1, 1, 0, 1)
+        self.c4 = ops.BasicBlockSig((channel // reduction)*3, channel, 1, 1, 0)
 
     def forward(self, x):
         y = self.avg_pool(x)
@@ -108,92 +107,40 @@ class CSAM_Module(nn.Module):
 ## Residual Channel Attention Block (RCAB)
 class RCAB(nn.Module):
     def __init__(
-            self, conv, in_feat, out_feat, kernel_size, reduction,
+            self, conv, n_feat, kernel_size, reduction,
             bias=True, bn=False, act=nn.ReLU(True), res_scale=1):
 
         super(RCAB, self).__init__()
         modules_body = []
-
-        self.init_conv = conv(in_feat, out_feat, kernel_size, bias=bias)
-
-        #self.init_act = act
-
-        modules_body.append(conv(out_feat, out_feat, kernel_size, bias=bias))
-        if bn: modules_body.append(nn.BatchNorm2d(out_feat))
-        modules_body.append(act)
-
-        modules_body.append(conv(out_feat, out_feat, kernel_size, bias=bias))
-        if bn: modules_body.append(nn.BatchNorm2d(out_feat))
-
-        modules_body.append(CALayer(out_feat, reduction))
+        for i in range(2):
+            modules_body.append(conv(n_feat, n_feat, kernel_size, bias=bias))
+            if bn: modules_body.append(nn.BatchNorm2d(n_feat))
+            if i == 0: modules_body.append(act)
+        modules_body.append(CALayer(n_feat, reduction))
         self.body = nn.Sequential(*modules_body)
         self.res_scale = res_scale
 
     def forward(self, x):
-
-        x = self.init_conv(x)
-
         res = self.body(x)
-
+        # res = self.body(x).mul(self.res_scale)
         res += x
-
         return res
 
-
-class BasicBlock(nn.Module):
-    def __init__(self,
-                 in_channels, out_channels,
-                 ksize=3, stride=1, pad=1, dilation=1):
-        super(BasicBlock, self).__init__()
-
-        self.body = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, ksize, stride, pad, dilation),
-            nn.ReLU()
-        )
-
-    def forward(self, x):
-        out = self.body(x)
-        return out
 
 ## Residual Group (RG)
 class ResidualGroup(nn.Module):
     def __init__(self, conv, n_feat, kernel_size, reduction, act, res_scale, n_resblocks):
         super(ResidualGroup, self).__init__()
-        # modules_body = []
-
+        modules_body = []
         modules_body = [
             RCAB(
-                conv, n_feat * (i + 1), n_feat, kernel_size, reduction, bias=True, bn=False, act=nn.ReLU(True), res_scale=1) \
-            for i in range(n_resblocks)]
-        # modules_body.append(conv(n_feat, n_feat, kernel_size))
-
-        # self.modules_body = nn.ModuleList(self.modules_body)
-
-        self.c1 = BasicBlock(n_feat, n_feat, kernel_size)
-
+                conv, n_feat, kernel_size, reduction, bias=True, bn=False, act=nn.ReLU(True), res_scale=1) \
+            for _ in range(n_resblocks)]
+        modules_body.append(conv(n_feat, n_feat, kernel_size))
         self.body = nn.Sequential(*modules_body)
 
-        self.la = LAM_Module(n_feat)
-        self.laconv = BasicBlock(n_feat, n_feat, 3, 1, 1)
-
     def forward(self, x):
-        # res = self.body(x)
-
-        i0 = x
-        # i1 = self.modules_body[0](i0)
-
-        for name, midlayer in self.body._modules.items():
-            if name == '0':
-                res = midlayer(i0)
-            else:
-                i0 = torch.cat([i0, res], 1)
-                res = midlayer(i0)
-
-        res = self.c1(res)
-
-        #res = self.la(res.unsqueeze(1))
-        #res = self.laconv(res)
-
+        res = self.body(x)
         res += x
         return res
 
@@ -236,9 +183,9 @@ class HAN(nn.Module):
 
         self.head = nn.Sequential(*modules_head)
         self.body = nn.Sequential(*modules_body)
-        self.ca = CALayer(n_feats, reduction)
+        self.csa = CSAM_Module(n_feats)
         self.la = LAM_Module(n_feats)
-        self.last_conv = nn.Conv2d(n_feats * (n_resgroups+1), n_feats, 3, 1, 1)
+        self.last_conv = nn.Conv2d(n_feats * 11, n_feats, 3, 1, 1)
         self.last = nn.Conv2d(n_feats * 2, n_feats, 3, 1, 1)
         self.tail = nn.Sequential(*modules_tail)
 
@@ -261,7 +208,7 @@ class HAN(nn.Module):
         res = self.la(res1)
         out2 = self.last_conv(res)
 
-        out1 = self.ca(out1)
+        out1 = self.csa(out1)
         out = torch.cat([out1, out2], 1)
         res = self.last(out)
 

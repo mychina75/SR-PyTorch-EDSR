@@ -15,7 +15,7 @@ class CALayer(nn.Module):
         self.c1 = ops.BasicBlock(channel , channel // reduction, 3, 1, 3, 3)
         self.c2 = ops.BasicBlock(channel , channel // reduction, 3, 1, 5, 5)
         self.c3 = ops.BasicBlock(channel , channel // reduction, 3, 1, 7, 7)
-        self.c4 = ops.BasicBlockSig((channel // reduction)*3, channel , 3, 1, 1)
+        self.c4 = ops.BasicBlockSig((channel // reduction)*3, channel, 3, 1, 1)
 
     def forward(self, x):
         y = self.avg_pool(x)

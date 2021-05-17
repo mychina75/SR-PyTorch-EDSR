@@ -37,7 +37,7 @@ def main():
             _model = model.Model(args, checkpoint)
             _loss = loss.Loss(args, checkpoint) if not args.test_only else None
             count_parameters(_model)
-
+            #exit(0)
             t = Trainer(args, loader, _model, _loss, checkpoint)
             while not t.terminate():
                 t.train()
