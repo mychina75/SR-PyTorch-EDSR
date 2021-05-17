@@ -12,3 +12,10 @@ python main.py --model HAN_dense_4 --scale 4  --save test --n_GPUs=2 --data_trai
 
 python main.py --model HAN_dense_5 --scale 4  --save test --n_GPUs=2 --data_train SIMD --data_test SIMD --dir_data D:\Bostan\SIMD\SIMD_NEW\Dataset_for_training  --data_range 1-4000/4001-4500 --epochs 300 --decay 200 --n_resblocks 2 --n_resgroups 20 --batch_size 32 --patch_size 192 --reduction 8 --test_every 500
 
+python main.py --model HAN_SE_BLOCKX3 --scale 4  --save HAN_SE_Blockx3_BDSampled --n_GPUs=2 --data_train SIMD --data_test SIMD --dir_data D:\Bostan\SIMD\SIMD_NEW\Dataset_for_training_blurred  --data_range 1-4000/4001-4500 --epochs 300 --decay 200 --n_resblocks 20 --n_resgroups 10 --batch_size 32 --patch_size 192 --reduction 4 --test_every 500
+
+
+python main.py --model HAN_SE_BLOCKX3 --scale 4  --save new_model_test --n_GPUs=2 --data_train SIMD --data_test SIMD --dir_data D:\Bostan\SIMD\SIMD_NEW\Dataset_for_training_blurred  --data_range 1-4000/4001-4500 --epochs 300 --decay 200 --n_resblocks 20 --n_resgroups 10 --batch_size 32 --patch_size 192 --reduction 4 --test_every 500
+
+#test commands
+python main.py --template HAN_SE_BLOCKX3 --pre_train ../experiment/HAN_SE_Blockx3_BDSampled/model/model_best.pt  --scale 4 --n_GPUs=2 --data_test SIMD --dir_data D:\Bostan\SIMD\SIMD_NEW\Dataset_for_testing_blurred --test_only --data_range 1-500 --save ..\experiment\test\han_se_blockx3 --save_results

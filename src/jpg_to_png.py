@@ -1,8 +1,8 @@
 from PIL import Image
 import os
 
-directory = r'D:\Bostan\COWC\cowc_train+val'
-destination = r'D:\Bostan\COWC\cowc_mini\COWC\COWC_train_HR'
+directory = r'D:\Bostan\SIMD\SIMD_NEW\blurred_downsampled_test\4x'
+destination = r'D:\Bostan\SIMD\SIMD_NEW\Dataset_for_testing_blurred\SIMD\SIMD_train_LR_bicubic\X4'
 
 for filename in os.listdir(directory):
     if filename.endswith(".jpg"):

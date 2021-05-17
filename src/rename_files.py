@@ -1,5 +1,5 @@
 import pathlib
-for path in pathlib.Path(r"D:\Bostan\COWC\cowc_mini\COWC\COWC_train_LR_bicubic\X4").iterdir():
+for path in pathlib.Path(r"D:\Bostan\SIMD\SIMD_NEW\Dataset_for_testing_blurred\SIMD\SIMD_train_LR_bicubic\X4").iterdir():
   if path.is_file():
     old_name = path.stem
 
