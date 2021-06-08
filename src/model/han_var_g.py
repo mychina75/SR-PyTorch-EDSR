@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import pdb
 import model.common
-import model.ops as ops
 
 def make_model(args, parent=False):
     return HAN(args)
@@ -12,71 +11,21 @@ def make_model(args, parent=False):
 class CALayer(nn.Module):
     def __init__(self, channel, reduction=16):
         super(CALayer, self).__init__()
-
-
-        self.reduction = reduction
+        # global average pooling: feature --> point
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.c1 = ops.BasicBlock(channel , channel // reduction, 1, 1, 0, 1)
-        #self.c2 = ops.BasicBlock(channel , channel // reduction, 1, 1, 0, 1)
-        #self.c3 = ops.BasicBlock(channel , channel // reduction, 1, 1, 0, 1)
-        #self.c4 = ops.BasicBlock((channel // reduction)*3, channel, 1, 1, 0, 1)
-
-        self.max_pool = nn.AdaptiveMaxPool2d(1)
-        self.c5 = ops.BasicBlock(channel, channel // reduction, 1, 1, 0, 1)
-        # self.c6 = ops.BasicBlock(channel, channel // reduction, 1, 1, 0, 1)
-        # self.c7 = ops.BasicBlock(channel, channel // reduction, 1, 1, 0, 1)
-        # self.c8 = ops.BasicBlock((channel // reduction) * 3, channel, 1, 1, 0, 1)
-
-        self.c9 = ops.BasicBlock(2, 1, 1, 1, 0, 1)
-        #self.sigmoid = nn.Sigmoid()
-        self.c10 = ops.BasicBlockSig(channel // reduction, channel, 1, 1, 0)
+        # feature channel downscale and upscale --> channel weight
+        self.conv_du = nn.Sequential(
+            nn.Conv2d(channel, channel // reduction, 1, padding=0, bias=True),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(channel // reduction, channel, 1, padding=0, bias=True),
+            nn.Sigmoid()
+        )
 
     def forward(self, x):
-
-        m_batchsize, C, height, width = x.size()
-
-        y1 = self.avg_pool(x)
-        c1 = self.c1(y1)
-        # c2 = self.c2(y1)
-        # c3 = self.c3(y1)
-        # c_out1 = torch.cat([c1, c2, c3], dim=1)
-        # y1 = self.c4(c_out1)
-
-        y2 = self.max_pool(x)
-        c5 = self.c5(y2)
-        # c6 = self.c6(y2)
-        # c7 = self.c7(y2)
-        # c_out2 = torch.cat([c5, c6, c7], dim=1)
-        # y2 = self.c8(c_out2)
-
-        y3 = c1.view(m_batchsize, 1, C // self.reduction, 1)
-        y4 = c5.view(m_batchsize, 1, C // self.reduction, 1)
-
-        c_out = torch.cat([y3, y4], dim=1)
-        c9 = self.c9(c_out)
-
-        y5 = c9.view(m_batchsize, C // self.reduction, 1, 1)
-        y = self.c10(y5)
-
+        y = self.avg_pool(x)
+        y = self.conv_du(y)
         return x * y
 
-class PALayer(nn.Module):
-    def __init__(self, channel, reduction=16):
-        super(PALayer, self).__init__()
-
-        self.c1 = ops.BasicBlock(channel, channel // reduction, 1, 1, 0, 1)
-        self.c2 = ops.BasicBlock(channel, channel // reduction, 1, 1, 0, 1)
-        self.c3 = ops.BasicBlock(channel, channel // reduction, 1, 1, 0, 1)
-        self.c4 = ops.BasicBlockSig((channel // reduction)*3, channel, 1, 1, 0)
-
-    def forward(self, x):
-        #y = self.avg_pool(x)
-        c1 = self.c1(x)
-        c2 = self.c2(x)
-        c3 = self.c3(x)
-        c_out = torch.cat([c1, c2, c3], dim=1)
-        y = self.c4(c_out)
-        return x * y
 
 class LAM_Module(nn.Module):
     """ Layer attention module"""
@@ -198,7 +147,7 @@ class HAN(nn.Module):
     def __init__(self, args, conv=model.common.default_conv):
         super(HAN, self).__init__()
 
-        n_resgroups = args.n_resgroups
+        self.n_resgroups = args.n_resgroups
         n_resblocks = args.n_resblocks
         n_feats = args.n_feats
         kernel_size = 3
@@ -218,7 +167,7 @@ class HAN(nn.Module):
         modules_body = [
             ResidualGroup(
                 conv, n_feats, kernel_size, reduction, act=act, res_scale=args.res_scale, n_resblocks=n_resblocks) \
-            for _ in range(n_resgroups)]
+            for _ in range(self.n_resgroups)]
 
         modules_body.append(conv(n_feats, n_feats, kernel_size))
 
@@ -233,7 +182,7 @@ class HAN(nn.Module):
         self.body = nn.Sequential(*modules_body)
         self.csa = CSAM_Module(n_feats)
         self.la = LAM_Module(n_feats)
-        self.last_conv = nn.Conv2d(n_feats * 11, n_feats, 3, 1, 1)
+        self.last_conv = nn.Conv2d(n_feats * (self.n_resgroups+1), n_feats, 3, 1, 1)
         self.last = nn.Conv2d(n_feats * 2, n_feats, 3, 1, 1)
         self.tail = nn.Sequential(*modules_tail)
 

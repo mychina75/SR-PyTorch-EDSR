@@ -15,18 +15,16 @@ class CALayer(nn.Module):
 
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
 
-        self.c1 = ops.BasicBlock(channel , channel // reduction, 1, 1, 0, 1)
-        self.c2 = ops.BasicBlock(channel , channel // reduction, 1, 1, 0, 1)
-        self.c3 = ops.BasicBlock(channel , channel // reduction, 1, 1, 0, 1)
+        self.c1 = ops.BasicBlock(channel , (channel // reduction) * 3, 1, 1, 0, 1)
+        # self.c2 = ops.BasicBlock(channel , channel // reduction, 1, 1, 0, 1)
+        # self.c3 = ops.BasicBlock(channel , channel // reduction, 1, 1, 0, 1)
         self.c4 = ops.BasicBlockSig((channel // reduction)*3, channel, 1, 1, 0)
 
     def forward(self, x):
         y = self.avg_pool(x)
         c1 = self.c1(y)
-        c2 = self.c2(y)
-        c3 = self.c3(y)
-        c_out = torch.cat([c1, c2, c3], dim=1)
-        y = self.c4(c_out)
+        #c_out = torch.cat([c1, c2, c3], dim=1)
+        y = self.c4(c1)
         return x * y
 
 
@@ -103,8 +101,47 @@ class CSAM_Module(nn.Module):
         x = x * out + x
         return x
 
+class Dense_Block(nn.Module):
+    def __init__(self, in_channels):
+        super(Dense_Block, self).__init__()
+        self.relu = nn.ReLU(inplace=True)
 
-## Residual Channel Attention Block (RCAB)
+        self.conv1 = nn.Conv2d(in_channels, 32, 3, 1, padding=1)
+        self.conv2 = nn.Conv2d(32, 32, 3, 1, padding=1)
+        self.conv3 = nn.Conv2d(64, 32, 3, 1, padding=1)
+        self.conv4 = nn.Conv2d(96, 32, 3, 1, padding=1)
+        self.conv5 = nn.Conv2d(128, 32, 3, 1, padding=1)
+
+    def forward(self, x):
+
+        conv1 = self.relu(self.conv1(x))
+        conv2 = self.relu(self.conv2(conv1))
+        # Concatenate in channel dimension
+        c2_dense = self.relu(torch.cat([conv1, conv2], 1))
+
+        conv3 = self.relu(self.conv3(c2_dense))
+        c3_dense = self.relu(torch.cat([conv1, conv2, conv3], 1))
+
+        conv4 = self.relu(self.conv4(c3_dense))
+        c4_dense = self.relu(torch.cat([conv1, conv2, conv3, conv4], 1))
+
+        conv5 = self.relu(self.conv5(c4_dense))
+        c5_dense = self.relu(torch.cat([conv1, conv2, conv3, conv4, conv5], 1))
+
+        return c5_dense
+
+class Transition_Layer(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(Transition_Layer, self).__init__()
+
+        self.relu = nn.ReLU(inplace=True)
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False)
+
+    def forward(self, x):
+        out = self.relu(self.conv(x))
+        return out
+
+            ## Residual Channel Attention Block (RCAB)
 class RCAB(nn.Module):
     def __init__(
             self, conv, n_feat, kernel_size, reduction,
@@ -112,10 +149,12 @@ class RCAB(nn.Module):
 
         super(RCAB, self).__init__()
         modules_body = []
-        for i in range(2):
-            modules_body.append(conv(n_feat, n_feat, kernel_size, bias=bias))
-            if bn: modules_body.append(nn.BatchNorm2d(n_feat))
-            if i == 0: modules_body.append(act)
+        #for i in range(2):
+            # modules_body.append(conv(n_feat, n_feat, kernel_size, bias=bias))
+            # if bn: modules_body.append(nn.BatchNorm2d(n_feat))
+            # if i == 0: modules_body.append(act)
+        modules_body.append(Dense_Block(n_feat))
+        modules_body.append(Transition_Layer(32*5, n_feat))
         modules_body.append(CALayer(n_feat, reduction))
         self.body = nn.Sequential(*modules_body)
         self.res_scale = res_scale
@@ -150,7 +189,7 @@ class HAN(nn.Module):
     def __init__(self, args, conv=model.common.default_conv):
         super(HAN, self).__init__()
 
-        n_resgroups = args.n_resgroups
+        self.n_resgroups = args.n_resgroups
         n_resblocks = args.n_resblocks
         n_feats = args.n_feats
         kernel_size = 3
@@ -170,7 +209,7 @@ class HAN(nn.Module):
         modules_body = [
             ResidualGroup(
                 conv, n_feats, kernel_size, reduction, act=act, res_scale=args.res_scale, n_resblocks=n_resblocks) \
-            for _ in range(n_resgroups)]
+            for _ in range(self.n_resgroups)]
 
         modules_body.append(conv(n_feats, n_feats, kernel_size))
 
@@ -185,7 +224,7 @@ class HAN(nn.Module):
         self.body = nn.Sequential(*modules_body)
         self.csa = CSAM_Module(n_feats)
         self.la = LAM_Module(n_feats)
-        self.last_conv = nn.Conv2d(n_feats * 11, n_feats, 3, 1, 1)
+        self.last_conv = nn.Conv2d(n_feats * (self.n_resgroups+1), n_feats, 3, 1, 1)
         self.last = nn.Conv2d(n_feats * 2, n_feats, 3, 1, 1)
         self.tail = nn.Sequential(*modules_tail)
 

@@ -51,6 +51,14 @@ def set_template(args):
         args.patch_size = 41
         args.lr = 1e-1
 
+    if args.template.find('HAN_SE_BLOCKX3_SINGLE_CONV_CA_SUM') >= 0:
+        args.model = 'HAN_SE_BLOCKX3_SINGLE_CONV_CA_SUM'
+        args.n_resblocks = 20
+        args.n_resgroups = 10
+        args.batch_size = 32
+        args.patch_size = 192
+        args.reduction = 4
+
     # if args.template.find('HAN_SE_BLOCKX3') >= 0:
     #     args.model = 'HAN_SE_BLOCKX3'
     #     args.n_resblocks = 20
@@ -59,12 +67,12 @@ def set_template(args):
     #     args.patch_size = 192
     #     args.reduction = 4
 
-    if args.template.find('HAN') >= 0:
-        args.model = 'HAN'
-        args.n_resblocks = 20
-        args.n_resgroups = 10
-        args.batch_size = 32
-        args.patch_size = 192
+    # if args.template.find('HAN') >= 0:
+    #     args.model = 'HAN'
+    #     args.n_resblocks = 20
+    #     args.n_resgroups = 10
+    #     args.batch_size = 32
+    #     args.patch_size = 192
 
     if args.template.find('DRLN') >= 0:
         args.model = 'DRLN'
